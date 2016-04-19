@@ -5,6 +5,53 @@ import random
 import math
 from PIL import Image
 
+
+def build_random_lambda_function(min_depth, max_depth):
+	""" Builds a random function of depth at least min_depth and depth
+		at most max_depth (see assignment writeup for definition of depth
+		in this context)
+
+		min_depth: the minimum depth of the random function
+		max_depth: the maximum depth of the random function
+		returns: the randomly generated function represented as a nested lambda functions
+	"""
+
+	l_functions =  [lambda x,y: random.choice([x,y]), 													# Return self
+					lambda x: math.sin(math.pi*x),									# sin(x)
+					lambda x: math.cos(math.pi*x),									# cos(x)
+					lambda x: (math.exp(x)-math.exp(-1))/(math.e-math.exp(-1))-0.5,	# e^x adjusted to be between 
+					lambda x,y: x*y,											
+					lambda x,y: (x+y)/2,
+					lambda x,y: math.sqrt(abs(x*y))				 					# Geometric mean
+					]	
+
+	funcIdx = randint(1, len(l_functions)-1)
+	random_func = l_functions[funcIdx]
+
+	min_count = 1
+
+	if max_depth == 0:
+		return l_functions[0]
+
+	if min_depth == 0:
+		min_count = 0
+
+		if randint(0, max_depth) == 0:		# There is a random chance that I'll stop at the current minimum depth
+			return l_functions[0]
+
+	if 1 <= funcIdx and funcIdx <= 3:
+		# Function has one input
+		rec_func = build_random_lambda_function(min_depth-min_count, max_depth-1)
+		return lambda a,b: random_func(rec_func(a,b))
+	else:
+		# Function has two inputs
+		rec_func1 = build_random_lambda_function(min_depth-min_count, max_depth-1)
+		rec_func2 = build_random_lambda_function(min_depth-min_count, max_depth-1)
+
+		return lambda a,b: random_func(rec_func1(a,b), rec_func2(a,b))
+		
+
+
 def build_random_function(min_depth, max_depth):
 	""" Builds a random function of depth at least min_depth and depth
 		at most max_depth (see assignment writeup for definition of depth
@@ -19,6 +66,7 @@ def build_random_function(min_depth, max_depth):
 
 	# geomean is the geometric mean. exp is the exponential function adjusted to have a range of [-1,1]
 	functions = ['x', 'y', 'sin_pi', 'cos_pi', 'exp', 'prod', 'avg', 'geomean']
+
 	funcIdx = randint(2, len(functions)-1)
 	theRandomFunc = functions[funcIdx]
 
@@ -29,21 +77,25 @@ def build_random_function(min_depth, max_depth):
 
 
 	if max_depth == 0:
-		randomToggle = randint(0,1) 								# Used to determine whether to return x or y
+		randomToggle = randint(0,1) # Used to determine whether to return x or y
 
 		return [randomToggle*functions[0] + (not randomToggle)*functions[1]]
 	if min_depth == 0:
 
-		if randint(0, max_depth) == 0:				# There is a random chance that I'll stop at the current minimum depth
-			randomToggle = randint(0,1) 								# Used to determine whether to return x or y
+		if randint(0, max_depth) == 0:	# There is a random chance that I'll stop at the current minimum depth
+			randomToggle = randint(0,1) 					# Used to determine whether to return x or y
 			return [randomToggle*functions[0] + (not randomToggle)*functions[1]]
 		
-		if has_one_input: return [theRandomFunc, build_random_function(0, max_depth-1)]
-		return [theRandomFunc, build_random_function(0, max_depth-1), build_random_function(0, max_depth-1)]
+		if has_one_input: 
+			return [theRandomFunc, build_random_function(0, max_depth-1)]
+		return [theRandomFunc, build_random_function(0, max_depth-1), \
+								build_random_function(0, max_depth-1)]
 
 	# Only make two function calls if the function requires two inputs
-	if has_one_input: return [theRandomFunc, build_random_function(min_depth-1, max_depth-1)]
-	return [theRandomFunc, build_random_function(min_depth-1, max_depth-1), build_random_function(min_depth-1, max_depth-1)]
+	if has_one_input: 
+		return [theRandomFunc, build_random_function(min_depth-1, max_depth-1)]
+	return [theRandomFunc, build_random_function(min_depth-1, max_depth-1), \
+							build_random_function(min_depth-1, max_depth-1)]
 
 
 
@@ -170,9 +222,9 @@ def generate_art(filename, x_size=350, y_size=350):
 		x_size, y_size: optional args to set image dimensions (default: 350)
 	"""
 	# Functions for red, green, and blue channels - where the magic happens!
-	red_function = build_random_function(7,9)
-	green_function = build_random_function(7,9)
-	blue_function = build_random_function(7,9)
+	red_function = build_random_function(3,5)
+	green_function = build_random_function(3,5)
+	blue_function = build_random_function(3,5)
 
 	# Create image and loop over all pixels
 	im = Image.new("RGB", (x_size, y_size))
@@ -189,15 +241,37 @@ def generate_art(filename, x_size=350, y_size=350):
 
 	im.save(filename)
 
+def generate_lambda_art(filename, x_size=350, y_size=350):
+	""" Generate computational art with lambda functions and save as an image file.
+
+		filename: string filename for image (should be .png)
+		x_size, y_size: optional args to set image dimensions (default: 350)
+	"""
+	# Functions for red, green, and blue channels - where the magic happens!
+	red_function = build_random_lambda_function(7,9)
+	green_function = build_random_lambda_function(7,9)
+	blue_function = build_random_lambda_function(7,9)
+
+	# Create image and loop over all pixels
+	im = Image.new("RGB", (x_size, y_size))
+	pixels = im.load()
+	for i in range(x_size):
+		for j in range(y_size):
+			x = remap_interval(i, 0, x_size, -1, 1)
+			y = remap_interval(j, 0, y_size, -1, 1)
+			pixels[i, j] = (
+					color_map(red_function(x, y)),
+					color_map(green_function(x, y)),
+					color_map(blue_function(x, y))
+					)
+
+	im.save(filename)
+
 
 if __name__ == '__main__':
 	import doctest
 	doctest.testmod()
 
-	print build_random_function(1,3)
-
 	# Create some computational art!
-	# TODO: Un-comment the generate_art function call after you
-	#       implement remap_interval and evaluate_random_function
-	generate_art("myart.png")
+	generate_lambda_art("myart.png")
 
